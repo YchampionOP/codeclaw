@@ -172,7 +172,7 @@ def _poll_once(logger: logging.Logger) -> int:
                         push_to_huggingface(PENDING_FILE, repo_id, dict(meta))
                         pushed = True
                         break
-                    except SystemExit:
+                    except Exception:
                         if attempt >= len(RETRY_BACKOFF_SECONDS):
                             logger.exception("Auto-push failed after all retries")
                             break
@@ -369,6 +369,8 @@ def run_daemon() -> None:
         if watch_enabled:
             try:
                 _poll_once(logger)
+            except SystemExit:
+                logger.error("Push failed with fatal error (SystemExit); check HF token, repo, and dependencies; skipping cycle")
             except Exception:
                 logger.exception("Initial poll cycle failed; continuing daemon loop")
         while True:
@@ -383,6 +385,8 @@ def run_daemon() -> None:
                     break
                 try:
                     _poll_once(logger)
+                except SystemExit:
+                    logger.error("Push failed with fatal error (SystemExit); check HF token, repo, and dependencies; skipping cycle")
                 except Exception:
                     logger.exception("Poll cycle failed; continuing daemon loop")
             else:
@@ -391,6 +395,8 @@ def run_daemon() -> None:
                     break
                 try:
                     _poll_once(logger)
+                except SystemExit:
+                    logger.error("Push failed with fatal error (SystemExit); check HF token, repo, and dependencies; skipping cycle")
                 except Exception:
                     logger.exception("Poll cycle failed; continuing daemon loop")
     finally:
