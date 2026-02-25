@@ -221,3 +221,30 @@ class TestBuildIndexFromJsonl:
 
         index = build_index_from_jsonl([f1, f2])
         assert index.stats()["sessions"] == 2
+
+
+# --- File and error node tracking ---
+
+class TestFileAndErrorNodeTracking:
+    def test_file_ref_query(self):
+        session = _make_session(
+            session_id="s-file-ref",
+            content="Please fix src/foo.py\nTypeError: unsupported operand",
+        )
+        index = GraphIndex()
+        index.build([session])
+
+        assert index.stats()["sessions"] == 1
+        results = index.query(["file:src/foo.py"])
+        assert any(r["session_id"] == "s-file-ref" for r in results)
+
+    def test_error_ref_query(self):
+        session = _make_session(
+            session_id="s-err-ref",
+            content="Please fix src/foo.py\nTypeError: unsupported operand",
+        )
+        index = GraphIndex()
+        index.build([session])
+
+        results = index.query(["error:typeerror: unsupported operand"])
+        assert any(r["session_id"] == "s-err-ref" for r in results)
