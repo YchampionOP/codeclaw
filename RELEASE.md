@@ -45,5 +45,10 @@ If publish fails with `invalid-publisher`, trusted publisher claims do not match
 Expected claims for this repo:
 
 - repository: `ychampion/codeclaw`
-- workflow: `ychampion/codeclaw/.github/workflows/publish.yml@refs/heads/main`
+- workflow: `.github/workflows/publish.yml`
 - environment: `pypi`
+
+For debugging, note that `workflow_ref` differs by trigger:
+
+- tag publish: `ychampion/codeclaw/.github/workflows/publish.yml@refs/tags/vX.Y.Z...`
+- manual dispatch from `main`: `ychampion/codeclaw/.github/workflows/publish.yml@refs/heads/main`
