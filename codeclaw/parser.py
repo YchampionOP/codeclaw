@@ -136,7 +136,7 @@ def parse_project_sessions(
 ) -> list[dict]:
     """Parse all sessions for a project into structured dicts."""
     if source == CODEX_SOURCE:
-        index = _get_codex_project_index()
+        index = _get_codex_project_index(refresh=True)
         session_files = index.get(project_dir_name, [])
         sessions = []
         for session_file in session_files:
@@ -456,6 +456,13 @@ def _safe_int(value: Any) -> int:
 
 
 def _get_codex_project_index(refresh: bool = False) -> dict[str, list[Path]]:
+    """Return the module-level Codex project index, building it if needed.
+
+    Pass ``refresh=True`` to force a full rebuild from disk — callers that may
+    be invoked repeatedly in a long-running process (e.g. a daemon poll loop)
+    *must* use ``refresh=True`` so that session files added after startup are
+    not missed.
+    """
     global _CODEX_PROJECT_INDEX
     if refresh or not _CODEX_PROJECT_INDEX:
         _CODEX_PROJECT_INDEX = _build_codex_project_index()

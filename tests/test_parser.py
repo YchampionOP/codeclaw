@@ -6,6 +6,7 @@ import pytest
 
 from codeclaw.parser import (
     _build_project_name,
+    _discover_codex_projects,
     _extract_assistant_content,
     _extract_user_content,
     _normalize_timestamp,
@@ -568,6 +569,43 @@ class TestDiscoverProjects:
         assert sessions[0]["messages"][0]["role"] == "user"
         assert sessions[0]["messages"][1]["role"] == "assistant"
         assert sessions[0]["messages"][1]["tool_uses"][0]["tool"] == "exec_command"
+
+    def test_discover_codex_projects_no_stale_cache(self, tmp_path, monkeypatch):
+        """_discover_codex_projects() must not serve stale results in daemon loops.
+
+        Simulate two poll cycles: the first yields one session file, the second
+        yields two.  Both calls must reflect the *current* filesystem state.
+        """
+        import codeclaw.parser as parser_mod
+        from pathlib import Path
+
+        cwd_a = "/home/user/project-a"
+        cwd_b = "/home/user/project-b"
+
+        # Minimal JSONL content that associates each file with its cwd.
+        def _make_session_line(cwd: str) -> str:
+            return json.dumps({
+                "timestamp": "2026-02-25T00:00:00.000Z",
+                "type": "session_meta",
+                "payload": {"id": "s1", "cwd": cwd, "model_provider": "openai"},
+            }) + "\n"
+
+        file_a = tmp_path / "session_a.jsonl"
+        file_b = tmp_path / "session_b.jsonl"
+        file_a.write_text(_make_session_line(cwd_a))
+        file_b.write_text(_make_session_line(cwd_b))
+
+        calls = iter([[file_a], [file_a, file_b]])
+
+        monkeypatch.setattr(parser_mod, "_iter_codex_session_files", lambda: next(calls))
+        monkeypatch.setattr(parser_mod, "_CODEX_PROJECT_INDEX", {})
+        monkeypatch.setattr("codeclaw.parser.PROJECTS_DIR", tmp_path / "no-claude-projects")
+
+        first = _discover_codex_projects()
+        assert len(first) == 1, "first call should see 1 project"
+
+        second = _discover_codex_projects()
+        assert len(second) == 2, "second call must not serve stale cache"
 
 
 # --- detect_current_project ---
