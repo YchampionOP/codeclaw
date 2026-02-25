@@ -298,32 +298,8 @@ def _record_export_metrics(
         config["stats_total_publishes"] = int(config.get("stats_total_publishes", 0) or 0) + 1
 
 
-def _build_dataset_card(repo_id: str, meta: dict, project_configs: list[str] | None = None) -> str:
-    models = meta.get("models", {})
-    sessions = meta.get("sessions", 0)
-    projects = meta.get("projects", [])
-    trajectory_types = meta.get("trajectory_types", {})
-    total_input = meta.get("total_input_tokens", 0)
-    total_output = meta.get("total_output_tokens", 0)
-    timestamp = meta.get("exported_at", "")[:10]
-    project_configs = project_configs or []
 
-    model_tags = "\n".join(f"  - {m}" for m in sorted(models.keys()) if m != "unknown")
-    model_lines = "\n".join(
-        f"| {m} | {c} |" for m, c in sorted(models.items(), key=lambda x: -x[1])
-    )
-    trajectory_lines = "\n".join(
-        f"| {name} | {count} |" for name, count in sorted(trajectory_types.items(), key=lambda x: -x[1])
-    ) or "| sft_clean | 0 |"
-    configs_yaml = ""
-    if project_configs:
-        entries = "\n".join(
-            f"  - config_name: {project}\n    data_files: data/{project}/*.jsonl"
-            for project in project_configs
-        )
-        configs_yaml = f"configs:\n{entries}\n"
-
-    return f"""---
+DATASET_CARD_TEMPLATE = """---
 license: mit
 task_categories:
   - text-generation
@@ -355,9 +331,9 @@ Exported with [CodeClaw]({REPO_URL}).
 | Metric | Value |
 |--------|-------|
 | Sessions | {sessions} |
-| Projects | {len(projects)} |
-| Input tokens | {_format_token_count(total_input)} |
-| Output tokens | {_format_token_count(total_output)} |
+| Projects | {projects_count} |
+| Input tokens | {total_input_formatted} |
+| Output tokens | {total_output_formatted} |
 | Last updated | {timestamp} |
 
 ### Models
@@ -424,6 +400,46 @@ pip install codeclaw
 codeclaw
 ```
 """
+
+
+def _build_dataset_card(repo_id: str, meta: dict, project_configs: list[str] | None = None) -> str:
+    models = meta.get("models", {})
+    sessions = meta.get("sessions", 0)
+    projects = meta.get("projects", [])
+    trajectory_types = meta.get("trajectory_types", {})
+    total_input = meta.get("total_input_tokens", 0)
+    total_output = meta.get("total_output_tokens", 0)
+    timestamp = meta.get("exported_at", "")[:10]
+    project_configs = project_configs or []
+
+    model_tags = "\n".join(f"  - {m}" for m in sorted(models.keys()) if m != "unknown")
+    model_lines = "\n".join(
+        f"| {m} | {c} |" for m, c in sorted(models.items(), key=lambda x: -x[1])
+    )
+    trajectory_lines = "\n".join(
+        f"| {name} | {count} |" for name, count in sorted(trajectory_types.items(), key=lambda x: -x[1])
+    ) or "| sft_clean | 0 |"
+    configs_yaml = ""
+    if project_configs:
+        entries = "\n".join(
+            f"  - config_name: {project}\n    data_files: data/{project}/*.jsonl"
+            for project in project_configs
+        )
+        configs_yaml = f"configs:\n{entries}\n"
+
+    return DATASET_CARD_TEMPLATE.format(
+        model_tags=model_tags,
+        configs_yaml=configs_yaml,
+        REPO_URL=REPO_URL,
+        sessions=sessions,
+        projects_count=len(projects),
+        total_input_formatted=_format_token_count(total_input),
+        total_output_formatted=_format_token_count(total_output),
+        timestamp=timestamp,
+        model_lines=model_lines,
+        trajectory_lines=trajectory_lines,
+        repo_id=repo_id,
+    )
 
 
 def status() -> None:
