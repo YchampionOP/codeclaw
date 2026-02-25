@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import sys
+import threading
 import time
 from pathlib import Path
 from typing import Any, Callable
@@ -133,10 +134,13 @@ class SessionIndexService:
         self._project_count = 0
         self._refresh_count = 0
         self._last_refresh_ms = 0.0
+        self._lock = threading.RLock()
 
     def _ensure_loaded(self) -> None:
         if self._sessions is None or self._index is None:
-            self.refresh()
+            with self._lock:
+                if self._sessions is None or self._index is None:
+                    self.refresh()
 
     def refresh(self) -> dict[str, Any]:
         start = time.perf_counter()
@@ -156,11 +160,12 @@ class SessionIndexService:
         index = self._graph_index_factory()
         index.build(sessions)
 
-        self._sessions = sessions
-        self._index = index
-        self._project_count = len(projects)
-        self._refresh_count += 1
-        self._last_refresh_ms = round((time.perf_counter() - start) * 1000, 2)
+        with self._lock:
+            self._sessions = sessions
+            self._index = index
+            self._project_count = len(projects)
+            self._refresh_count += 1
+            self._last_refresh_ms = round((time.perf_counter() - start) * 1000, 2)
         return self.meta()
 
     def sessions(self) -> list[dict[str, Any]]:
@@ -172,20 +177,27 @@ class SessionIndexService:
         return self._index
 
     def meta(self) -> dict[str, Any]:
+        with self._lock:
+            count = len(self._sessions or [])
+            project_count = self._project_count
+            refresh_count = self._refresh_count
+            last_refresh_ms = self._last_refresh_ms
+            index = self._index
+
         index_stats: dict[str, Any] = {}
-        if self._index is not None and hasattr(self._index, "stats"):
+        if index is not None and hasattr(index, "stats"):
             try:
-                maybe_stats = self._index.stats()
+                maybe_stats = index.stats()
                 if isinstance(maybe_stats, dict):
                     index_stats = maybe_stats
             except Exception:
                 index_stats = {}
 
         return {
-            "session_count": len(self._sessions or []),
-            "project_count": self._project_count,
-            "refresh_count": self._refresh_count,
-            "last_refresh_ms": self._last_refresh_ms,
+            "session_count": count,
+            "project_count": project_count,
+            "refresh_count": refresh_count,
+            "last_refresh_ms": last_refresh_ms,
             "index_stats": index_stats,
         }
 
