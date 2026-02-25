@@ -117,6 +117,7 @@ Automated redaction is not perfect. Always review local exports before publishin
 - Security policy: [SECURITY.md](SECURITY.md)
 - Support channels: [SUPPORT.md](SUPPORT.md)
 - Code of conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- Release process: [RELEASE.md](RELEASE.md)
 
 ## License
 
