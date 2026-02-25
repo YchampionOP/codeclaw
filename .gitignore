@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+.DS_Store
+*.jsonl
+
+# codeclaw local export/review artifacts
+codeclaw_conversations.jsonl
+codeclaw_export.jsonl
+findings.json
+
+# Local tooling state
+.desloppify/

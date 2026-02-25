@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "codeclaw"
+version = "0.4.0"
+description = "Export your Claude Code and Codex conversations to Hugging Face as structured training data"
+requires-python = ">=3.10"
+license = "MIT"
+readme = "README.md"
+authors = [
+    {name = "ychampion"},
+]
+keywords = ["claude-code", "huggingface", "dataset", "conversations", "training-data"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries",
+]
+dependencies = [
+    "huggingface_hub>=0.20.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/ychampion/codeclaw"
+Repository = "https://github.com/ychampion/codeclaw"
+Issues = "https://github.com/ychampion/codeclaw/issues"
+
+[project.scripts]
+codeclaw = "codeclaw.cli:main"
+
+[project.optional-dependencies]
+dev = ["pytest"]
+watch = ["watchdog"]
+mcp = ["mcp"]
+
+[tool.setuptools.packages.find]
+include = ["codeclaw*"]
