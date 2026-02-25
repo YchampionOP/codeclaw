@@ -1,6 +1,7 @@
 import json
 import subprocess
 import sys
+import threading
 from pathlib import Path
 
 from codeclaw import cli as codeclaw_cli
@@ -215,3 +216,68 @@ def test_mcp_refresh_index_returns_meta(monkeypatch):
     assert payload["ok"] is True
     assert payload["meta"]["refresh_count"] == 1
     assert payload["meta"]["session_count"] == 2
+
+
+def test_session_index_service_concurrent_refresh_and_sessions():
+    """Concurrent refresh() and sessions() calls must not raise or corrupt state."""
+    import time
+
+    call_count = 0
+
+    def _slow_discover():
+        nonlocal call_count
+        call_count += 1
+        time.sleep(0.01)
+        return [{"dir_name": "proj", "source": "claude"}]
+
+    def _parse(_dir, anonymizer, include_thinking, source):
+        return _sample_sessions()
+
+    class _DummyAnonymizer:
+        def __init__(self, _):
+            pass
+
+    class _DummyIndex:
+        def build(self, sessions):
+            self._sessions = sessions
+
+        def query(self, nodes, max_results=5):
+            return getattr(self, "_sessions", [])[:max_results]
+
+        def stats(self):
+            return {}
+
+    service = mcp_server.SessionIndexService(
+        discover_projects_fn=_slow_discover,
+        parse_project_sessions_fn=_parse,
+        anonymizer_factory=_DummyAnonymizer,
+        graph_index_factory=_DummyIndex,
+    )
+
+    errors: list[Exception] = []
+
+    def _do_refresh():
+        try:
+            service.refresh()
+        except Exception as exc:
+            errors.append(exc)
+
+    def _do_sessions():
+        try:
+            result = service.sessions()
+            assert len(result) > 0
+        except Exception as exc:
+            errors.append(exc)
+
+    threads = []
+    for _ in range(50):
+        threads.append(threading.Thread(target=_do_refresh))
+        threads.append(threading.Thread(target=_do_sessions))
+
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert errors == [], f"Concurrent access raised exceptions: {errors}"
+    assert len(service.sessions()) > 0
