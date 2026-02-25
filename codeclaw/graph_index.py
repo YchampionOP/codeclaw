@@ -232,12 +232,26 @@ class GraphIndex:
 
         # Record which nodes this session contributes to
         for msg in session.get("messages", []):
+            content = str(msg.get("content", ""))
+            role = msg.get("role")
+
             for tu in msg.get("tool_uses", []):
                 tool_name = str(tu.get("tool", "")).strip()
                 if tool_name:
                     tnode = _tool_node(tool_name)
                     if session_id not in self._node_to_sessions[tnode]:
                         self._node_to_sessions[tnode].append(session_id)
+
+            for fref in _extract_file_refs(content):
+                fnode = _file_node(fref)
+                if session_id not in self._node_to_sessions[fnode]:
+                    self._node_to_sessions[fnode].append(session_id)
+
+            if role == "user":
+                for err in _extract_error_refs(content):
+                    enode = _error_node(err)
+                    if session_id not in self._node_to_sessions[enode]:
+                        self._node_to_sessions[enode].append(session_id)
 
     def query(self, context_nodes: list[str], max_results: int = 5) -> list[dict]:
         """Return up to *max_results* sessions structurally similar to *context_nodes*.
