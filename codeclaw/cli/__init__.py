@@ -20,6 +20,7 @@ from .export import (
     prep,
     status,
 )
+from .growth import handle_doctor, handle_share, handle_stats
 from .mcp import handle_install_mcp, handle_serve
 from .update import _handle_synthesize, update_skill
 from .watch import _handle_watch, _run_setup_wizard
@@ -66,6 +67,7 @@ from .export import (  # noqa: F811
     _find_export_file,
     _list_project_configs,
     _print_pii_guidance,
+    _record_export_metrics,
     _read_sessions_from_jsonl,
     _safe_project_name,
     _scan_for_text_occurrences,
@@ -144,6 +146,23 @@ def main() -> None:
 
     sub.add_parser("serve", help="Run the CodeClaw MCP server over stdio")
     sub.add_parser("install-mcp", help="Install CodeClaw MCP server into Claude mcp.json")
+    doctor = sub.add_parser("doctor", help="Check setup health (logs, HF auth, MCP registration)")
+    doctor.add_argument("--source", choices=SOURCE_CHOICES, default="auto")
+    stats_cmd = sub.add_parser("stats", help="Show usage and export metrics")
+    stats_cmd.add_argument("--source", choices=SOURCE_CHOICES, default="auto")
+    share = sub.add_parser("share", help="One-command export flow with optional publish")
+    share.add_argument("--output", "-o", type=Path, default=None)
+    share.add_argument("--repo", "-r", type=str, default=None)
+    share.add_argument("--source", choices=SOURCE_CHOICES, default="auto")
+    share.add_argument("--all-projects", action="store_true")
+    share.add_argument("--no-thinking", action="store_true")
+    share.add_argument("--publish", action="store_true", help="Publish exported data to Hugging Face")
+    share.add_argument(
+        "--publish-attestation",
+        type=str,
+        default=None,
+        help="Required with --publish: text attestation that publishing was explicitly approved.",
+    )
 
     exp = sub.add_parser("export", help="Export and push (default)")
     # Export flags on both the subcommand and root parser so `codeclaw --no-push` works
@@ -233,6 +252,18 @@ def main() -> None:
 
     if command == "config":
         _handle_config(args)
+        return
+
+    if command == "doctor":
+        handle_doctor(args)
+        return
+
+    if command == "stats":
+        handle_stats(args)
+        return
+
+    if command == "share":
+        handle_share(args)
         return
 
     _run_export(args)

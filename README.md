@@ -47,6 +47,7 @@ huggingface-cli login --token YOUR_HF_TOKEN
 
 # Discover and configure
 codeclaw prep
+codeclaw doctor
 codeclaw config --source both
 codeclaw list --source both
 codeclaw config --repo username/cc-logs
@@ -63,6 +64,9 @@ codeclaw confirm \
 
 # Publish only after explicit approval
 codeclaw export --publish-attestation "User explicitly approved publishing to Hugging Face."
+
+# Optional one-command sharing flow
+codeclaw share --publish --publish-attestation "User explicitly approved publishing to Hugging Face."
 ```
 
 ## Commands
@@ -71,11 +75,14 @@ codeclaw export --publish-attestation "User explicitly approved publishing to Hu
 |---------|-------------|
 | `codeclaw status` | Show current stage and next steps (JSON) |
 | `codeclaw prep` | Discover projects and auth state |
+| `codeclaw doctor` | Verify logs, HF auth, and MCP registration |
+| `codeclaw stats` | Show session, token, redaction, and export metrics |
 | `codeclaw list` | List projects with source, size, and exclusion state |
 | `codeclaw config ...` | Configure repo, sources, exclusions, and redactions |
 | `codeclaw export --no-push` | Export locally for review |
 | `codeclaw confirm ...` | Run checks and unlock push gate |
 | `codeclaw export --publish-attestation "..."` | Push dataset after approval |
+| `codeclaw share [--publish]` | Fast export flow with optional publish + dataset card update |
 | `codeclaw watch --start|--stop|--status|--now` | Manage background sync daemon |
 | `codeclaw serve` | Start MCP server over stdio |
 | `codeclaw install-mcp` | Register MCP server in Claude config |

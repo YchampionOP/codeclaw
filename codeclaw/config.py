@@ -26,6 +26,15 @@ class CodeClawConfig(TypedDict, total=False):
     auto_push: bool
     last_synced_at: str | None
     synced_session_ids: list[str]
+    publish_attestation: str | None
+    dataset_enabled: bool
+    disabled_projects: list[str]
+    stats_total_exports: int
+    stats_total_publishes: int
+    stats_total_exported_sessions: int
+    stats_total_redactions: int
+    stats_total_input_tokens: int
+    stats_total_output_tokens: int
 
 
 DEFAULT_CONFIG: CodeClawConfig = {

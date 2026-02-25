@@ -244,6 +244,50 @@ def push_to_huggingface(jsonl_path: Path, repo_id: str, meta: dict) -> None:
     print(f"Browse all: https://huggingface.co/datasets?other={HF_TAG}")
 
 
+def _record_export_metrics(
+    config: CodeClawConfig,
+    meta: dict[str, object],
+    source_choice: str,
+    published: bool,
+    repo_id: str | None = None,
+    update_totals: bool = True,
+) -> None:
+    """Persist last-export metadata and lifetime counters in config."""
+    sessions = int(meta.get("sessions", 0) or 0)
+    redactions = int(meta.get("redactions", 0) or 0)
+    input_tokens = int(meta.get("total_input_tokens", 0) or 0)
+    output_tokens = int(meta.get("total_output_tokens", 0) or 0)
+
+    config["last_export"] = {
+        "timestamp": meta.get("exported_at"),
+        "sessions": sessions,
+        "models": meta.get("models", {}),
+        "projects": meta.get("projects", []),
+        "source": source_choice,
+        "redactions": redactions,
+        "total_input_tokens": input_tokens,
+        "total_output_tokens": output_tokens,
+        "published": published,
+        "repo": repo_id,
+    }
+
+    if update_totals:
+        config["stats_total_exports"] = int(config.get("stats_total_exports", 0) or 0) + 1
+        config["stats_total_exported_sessions"] = (
+            int(config.get("stats_total_exported_sessions", 0) or 0) + sessions
+        )
+        config["stats_total_redactions"] = int(config.get("stats_total_redactions", 0) or 0) + redactions
+        config["stats_total_input_tokens"] = (
+            int(config.get("stats_total_input_tokens", 0) or 0) + input_tokens
+        )
+        config["stats_total_output_tokens"] = (
+            int(config.get("stats_total_output_tokens", 0) or 0) + output_tokens
+        )
+
+    if published:
+        config["stats_total_publishes"] = int(config.get("stats_total_publishes", 0) or 0) + 1
+
+
 def _build_dataset_card(repo_id: str, meta: dict, project_configs: list[str] | None = None) -> str:
     models = meta.get("models", {})
     sessions = meta.get("sessions", 0)
@@ -1167,14 +1211,15 @@ def _run_export(args) -> None:
 
     _print_pii_guidance(output_path)
 
-    config["last_export"] = {
-        "timestamp": meta["exported_at"],
-        "sessions": meta["sessions"],
-        "models": meta["models"],
-        "source": source_choice,
-    }
-    if args.no_push:
-        config["stage"] = "review"
+    _record_export_metrics(
+        config=config,
+        meta=meta,
+        source_choice=source_choice,
+        published=False,
+        repo_id=repo_id,
+        update_totals=True,
+    )
+    config["stage"] = "review"
     save_config(config)
 
     if args.no_push:
@@ -1205,6 +1250,14 @@ def _run_export(args) -> None:
 
     push_to_huggingface(output_path, repo_id, meta)
 
+    _record_export_metrics(
+        config=config,
+        meta=meta,
+        source_choice=source_choice,
+        published=True,
+        repo_id=repo_id,
+        update_totals=False,
+    )
     config["stage"] = "done"
     save_config(config)
 
